@@ -9,10 +9,23 @@
 #>
 
 # --- STA guard: WPF requires an STA thread. Relaunch if we aren't one. ---
+# (PowerShell 7 and 5.1 are STA by default for -File; this only triggers for -MTA
+# or hosts that start MTA.) Relaunches in the SAME host that is running now and
+# reports a failure instead of exiting silently.
 if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') {
-    Start-Process -FilePath 'powershell.exe' -ArgumentList @(
-        '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`""
-    )
+    $nmHost = (Get-Process -Id $PID).Path
+    if (-not $PSCommandPath -or -not $nmHost) {
+        Write-Error 'Nerd Mode must be started from the saved file, e.g.: powershell.exe -ExecutionPolicy Bypass -File NerdMode.ps1'
+        exit 1
+    }
+    try {
+        Start-Process -FilePath $nmHost -ErrorAction Stop -ArgumentList @(
+            '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`""
+        )
+    } catch {
+        Write-Error "Nerd Mode could not relaunch on an STA thread: $($_.Exception.Message)"
+        exit 1
+    }
     exit
 }
 
@@ -21,6 +34,14 @@ Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
 Add-Type -AssemblyName System.Xaml
 Add-Type -AssemblyName System.Windows.Forms
+
+# Any terminating error from here on is shown and logged, never swallowed silently.
+trap {
+    $nmMsg = "Nerd Mode hit an error and has to close:`n`n$($_.Exception.Message)`n`n$($_.InvocationInfo.PositionMessage)"
+    try { Add-Content -Path (Join-Path $env:TEMP 'NerdMode_error.log') -Value ("[{0}] {1}" -f (Get-Date -Format s), $nmMsg) } catch {}
+    try { [void][System.Windows.MessageBox]::Show($nmMsg, 'Nerd Mode', 'OK', 'Error') } catch {}
+    exit 1
+}
 
 # All telemetry in this app is gathered via pure .NET/Win32 APIs (DriveInfo,
 # NetworkInterface, GetSystemTimes, GlobalMemoryStatusEx, registry reads,
