@@ -2,6 +2,8 @@
 
 A lightweight, read-only system inspection dashboard for Windows. Single-file PowerShell/WPF app — nothing to install.
 
+![Nerd Mode screenshot](screenshot.png)
+
 **Read-only by design.** Nerd Mode inspects and reports system information; it does not modify system settings, terminate processes, clean files, change services, or alter your network configuration.
 
 ## Requirements
