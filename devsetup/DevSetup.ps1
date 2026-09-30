@@ -397,7 +397,7 @@ doskey mv=move $*
 doskey clear=cls
 doskey pwd=cd
 doskey mkdir=md $*
-doskey touch=type nul >> $1
+doskey touch=type nul $g$g $1
 doskey which=where $*
 doskey open=explorer $*
 doskey env=set
@@ -407,8 +407,8 @@ doskey history=doskey /history
 doskey sudo=powershell -Command "Start-Process cmd -Verb RunAs"
 
 :: REGTeches shortcuts
-doskey ps=pwsh %*
-doskey py=python %*
+doskey ps=pwsh $*
+doskey py=python $*
 doskey c.=code .
 doskey ccode=cd /d %USERPROFILE%\code
 '@
