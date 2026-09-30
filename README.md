@@ -8,6 +8,10 @@ A small collection of free, single-file Windows utilities written in PowerShell.
 | **DevSetup** | [`devsetup/`](devsetup/) | One re-runnable script that sets up a full developer PC: PowerShell 7, Python, Git, VS Code and friends, plus PowerShell/CMD profiles with handy aliases. |
 | **Elevated Context Menu** | [`elevated-context-menu/`](elevated-context-menu/) | Adds "Run with PowerShell (Admin)" / "Run with Python (Admin)" to the right-click menu, launching elevated **without a UAC prompt**. See the security note there. |
 
+[![Nerd Mode screenshot](nerdmode/screenshot.png)](nerdmode/)
+
+*Nerd Mode - live CPU, memory, storage and network in one read-only window.*
+
 ## Quick start
 
 ```powershell
