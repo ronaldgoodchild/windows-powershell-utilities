@@ -23,7 +23,7 @@ Add-Type -AssemblyName System.Xaml
 Add-Type -AssemblyName System.Windows.Forms
 
 # All telemetry in this app is gathered via pure .NET/Win32 APIs (DriveInfo,
-# NetworkInterface, PerformanceCounter, GlobalMemoryStatusEx, registry reads,
+# NetworkInterface, GetSystemTimes, GlobalMemoryStatusEx, registry reads,
 # SystemInformation.PowerStatus) rather than WMI/CIM - deliberately avoids any
 # dependency on the WMI service, which can be slow, blocked, or hang on some
 # machines depending on local policy/security software.
@@ -47,6 +47,18 @@ public static class NmNative {
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX lpBuffer);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetSystemTimes(out long idle, out long kernel, out long user);
+
+    // Cumulative CPU times {idle, total} in 100ns ticks across all cores, or null on failure.
+    // (kernel time already includes idle time.) Two samples give the utilisation between them.
+    public static ulong[] GetCpuTimes() {
+        long idle, kernel, user;
+        if (!GetSystemTimes(out idle, out kernel, out user)) return null;
+        return new ulong[] { (ulong)idle, (ulong)kernel + (ulong)user };
+    }
 }
 "@
 
@@ -316,12 +328,19 @@ function Get-NmRandomWisdom {
 
 function Get-NmCpuInfo {
     try {
-        if (-not $script:CpuCounter) {
-            $script:CpuCounter = New-Object System.Diagnostics.PerformanceCounter('Processor', '% Processor Time', '_Total')
-            [void]$script:CpuCounter.NextValue()
+        # GetSystemTimes instead of a PerformanceCounter: instant, and immune to a
+        # damaged/slow performance-counter subsystem (the first counter sample took ~5s in PS 7).
+        $prev = $script:CpuPrev
+        if (-not $prev) {
+            $prev = [NmNative]::GetCpuTimes()
             Start-Sleep -Milliseconds 200
         }
-        $val = $script:CpuCounter.NextValue()
+        $now = [NmNative]::GetCpuTimes()
+        if (-not $prev -or -not $now) { return [PSCustomObject]@{ HasData = $false } }
+        $script:CpuPrev = $now
+        $dTotal = [double]($now[1] - $prev[1])
+        $dIdle  = [double]($now[0] - $prev[0])
+        $val = if ($dTotal -gt 0) { [math]::Max(0, [math]::Min(100, (1 - $dIdle / $dTotal) * 100)) } else { 0 }
         return [PSCustomObject]@{ HasData = $true; PercentOverall = [math]::Round($val, 1) }
     } catch {
         return [PSCustomObject]@{ HasData = $false }
