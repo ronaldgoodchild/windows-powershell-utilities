@@ -283,10 +283,10 @@ function ConvertTo-NmDataTable {
                 if ($null -eq $prop.Value) { $row[$prop.Name] = [DBNull]::Value }
                 else { $row[$prop.Name] = [string]$prop.Value }
             }
-            $table.Rows.Add($row)
+            [void]$table.Rows.Add($row)
         }
     }
-    return $table
+    return ,$table
 }
 
 $script:WisdomQuotes = @(
